@@ -8,6 +8,17 @@ This is useful for iCal feeds that remove events after they have passed.
 > **Note**: Datastore is subject to change. Currently it's a sqlite file.
 > But I'd like to explore options like `rocksdb` or `leveldb`.
 
+## Pre-requisites
+
+You will need `cargo` to build the project.
+`sqlite3` is required to interact with the sqlite database.
+
+### Create initial database
+
+```bash
+sqlite3 data/memcal.db
+```
+
 ## Architecture
 
 The primary interaction with `memcal` is through the REST API.
