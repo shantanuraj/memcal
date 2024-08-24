@@ -17,7 +17,16 @@ pub struct Event {
     pub summary: String,
     pub description: Option<String>,
     pub start_time: DateTime<Tz>,
+    pub start_time_tz: Tz,
     pub end_time: DateTime<Tz>,
+    pub end_time_tz: Tz,
+    pub location: Option<String>,
+    pub uid: String,
+    pub dtstamp: DateTime<Tz>,
+    pub dtstamp_tz: Tz,
+    pub organizer: Option<String>,
+    pub sequence: Option<i64>,
+    pub status: Option<String>,
 }
 
 #[derive(FromRow)]
@@ -30,6 +39,13 @@ struct EventRow {
     start_time_tz: String,
     end_time: String,
     end_time_tz: String,
+    location: Option<String>,
+    uid: String,
+    dtstamp: String,
+    dtstamp_tz: String,
+    organizer: Option<String>,
+    sequence: Option<i64>,
+    status: Option<String>,
 }
 
 impl TryFrom<EventRow> for Event {
@@ -38,6 +54,7 @@ impl TryFrom<EventRow> for Event {
     fn try_from(row: EventRow) -> Result<Self, Self::Error> {
         let start_time_tz = row.start_time_tz.parse::<Tz>().unwrap_or(Tz::UTC);
         let end_time_tz = row.end_time_tz.parse::<Tz>().unwrap_or(Tz::UTC);
+        let dtstamp_tz = row.dtstamp_tz.parse::<Tz>().unwrap_or(Tz::UTC);
 
         Ok(Event {
             id: row.id,
@@ -45,7 +62,16 @@ impl TryFrom<EventRow> for Event {
             summary: row.summary,
             description: row.description,
             start_time: DateTime::parse_from_rfc3339(&row.start_time)?.with_timezone(&start_time_tz),
+            start_time_tz,
             end_time: DateTime::parse_from_rfc3339(&row.end_time)?.with_timezone(&end_time_tz),
+            end_time_tz,
+            location: row.location,
+            uid: row.uid,
+            dtstamp: DateTime::parse_from_rfc3339(&row.dtstamp)?.with_timezone(&dtstamp_tz),
+            dtstamp_tz,
+            organizer: row.organizer,
+            sequence: row.sequence,
+            status: row.status,
         })
     }
 }
@@ -64,14 +90,24 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS events (
             id INTEGER PRIMARY KEY,
-            feed_id INTEGER NOT NULL,
+            feed_id INTEGER NOT NULL
+                constraint events_feeds_id_fk
+                    references feeds,
             summary TEXT NOT NULL,
             description TEXT,
             start_time TEXT NOT NULL,
             start_time_tz TEXT NOT NULL,
             end_time TEXT NOT NULL,
             end_time_tz TEXT NOT NULL,
-            FOREIGN KEY (feed_id) REFERENCES feeds (id)
+            location TEXT,
+            uid TEXT NOT NULL,
+            dtstamp TEXT NOT NULL,
+            dtstamp_tz TEXT NOT NULL,
+            organizer TEXT,
+            sequence INTEGER,
+            status TEXT,
+            constraint events_pk
+                unique (feed_id, start_time, end_time, start_time_tz, end_time_tz)
         )",
     )
     .execute(pool)
@@ -124,14 +160,45 @@ pub async fn delete_feed(pool: &SqlitePool, id: i64) -> Result<(), sqlx::Error> 
 
 pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Error> {
     let start_time = event.start_time.to_rfc3339();
+    let start_time_tz = event.start_time_tz.to_string();
     let end_time = event.end_time.to_rfc3339();
+    let end_time_tz = event.end_time_tz.to_string();
+    let dtstamp = event.dtstamp.to_rfc3339();
+    let dtstamp_tz = event.dtstamp_tz.to_string();
+
     sqlx::query!(
-        "INSERT INTO events (feed_id, summary, description, start_time, end_time) VALUES (?, ?, ?, ?, ?)",
+        "INSERT INTO events (
+            feed_id,
+            summary,
+            description,
+            start_time,
+            start_time_tz,
+            end_time,
+            end_time_tz,
+            location,
+            uid,
+            dtstamp,
+            dtstamp_tz,
+            organizer,
+            sequence,
+            status
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        )",
         event.feed_id,
         event.summary,
         event.description,
         start_time,
+        start_time_tz,
         end_time,
+        end_time_tz,
+        event.location,
+        event.uid,
+        dtstamp,
+        dtstamp_tz,
+        event.organizer,
+        event.sequence,
+        event.status,
     )
     .execute(pool)
     .await?;
@@ -145,7 +212,11 @@ pub async fn get_events_for_feed(
 ) -> Result<Vec<Event>, sqlx::Error> {
     let rows = sqlx::query_as!(
         EventRow,
-        "SELECT id, feed_id, summary, description, start_time, start_time_tz, end_time, end_time_tz FROM events WHERE feed_id = ?",
+        "SELECT
+            id, feed_id, summary, description, start_time, start_time_tz,
+            end_time, end_time_tz, location, uid, dtstamp, dtstamp_tz,
+            organizer, sequence, status
+        FROM events WHERE feed_id = ?",
         feed_id
     )
     .fetch_all(pool)

@@ -3,7 +3,6 @@ use chrono::{NaiveDateTime, TimeZone};
 use chrono_tz::Tz;
 use reqwest;
 use sqlx::SqlitePool;
-use tracing::info;
 
 pub async fn sync_ical_events(
     pool: &SqlitePool,
@@ -56,8 +55,16 @@ pub async fn sync_ical_events(
 
         let end_time_tz = end_time_tz.parse::<Tz>().unwrap_or(Tz::UTC);
 
-        info!("start_time_tz: {}", start_time_tz);
-        info!("end_time_tz: {}", end_time_tz);
+        let dtstamp_tz = event
+            .properties
+            .iter()
+            .find(|p| p.name == "DTSTAMP")
+            .and_then(|p| p.params.as_ref())
+            .and_then(|p| p.first())
+            .and_then(|p| p.1.first())
+            .map_or("Etc/UTC", |v| v);
+
+        let dtstamp_tz = dtstamp_tz.parse::<Tz>().unwrap_or(Tz::UTC);
 
         let start_time = event
             .properties
@@ -77,13 +84,63 @@ pub async fn sync_ical_events(
             .map(|dt| end_time_tz.from_local_datetime(&dt).unwrap().with_timezone(&end_time_tz))
             .ok_or("Invalid end time")?;
 
+        let dtstamp = event
+            .properties
+            .iter()
+            .find(|p| p.name == "DTSTAMP")
+            .and_then(|p| p.value.as_ref())
+            .and_then(|v| NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S").ok())
+            .map(|dt| dtstamp_tz.from_local_datetime(&dt).unwrap().with_timezone(&dtstamp_tz))
+            .ok_or("Invalid dtstamp")?;
+
+        let location = event
+            .properties
+            .iter()
+            .find(|p| p.name == "LOCATION")
+            .and_then(|p| p.value.clone());
+
+        let uid = event
+            .properties
+            .iter()
+            .find(|p| p.name == "UID")
+            .and_then(|p| p.value.clone())
+            .unwrap_or_default();
+
+        let organizer = event
+            .properties
+            .iter()
+            .find(|p| p.name == "ORGANIZER")
+            .and_then(|p| p.value.clone());
+
+        let sequence = event
+            .properties
+            .iter()
+            .find(|p| p.name == "SEQUENCE")
+            .and_then(|p| p.value.as_ref())
+            .and_then(|v| v.parse::<i64>().ok());
+
+        let status = event
+            .properties
+            .iter()
+            .find(|p| p.name == "STATUS")
+            .and_then(|p| p.value.clone());
+
         let event = Event {
-            id: 0, // This will be set by the database
+            id: 0,
             feed_id,
             summary,
             description: Some(description),
             start_time,
+            start_time_tz,
             end_time,
+            end_time_tz,
+            location,
+            uid,
+            dtstamp,
+            dtstamp_tz,
+            organizer,
+            sequence,
+            status,
         };
 
         db::add_event(pool, &event).await?;
