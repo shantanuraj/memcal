@@ -3,10 +3,12 @@ use axum::{
     http::StatusCode,
     Json,
 };
-use uuid::Uuid;
+use axum_extra::TypedHeader;
+use headers::{authorization::Bearer, Authorization};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 use sonyflake::Sonyflake;
+use uuid::Uuid;
 
 use crate::db;
 
@@ -60,8 +62,10 @@ pub async fn get_feed(
 
 pub async fn delete_feed(
     State(pool): State<SqlitePool>,
-    Path((feed_id, manage_token)): Path<(i64, String)>,
+    Path(feed_id): Path<i64>,
+    TypedHeader(Authorization(auth)): TypedHeader<Authorization<Bearer>>,
 ) -> Result<StatusCode, StatusCode> {
+    let manage_token = auth.token().to_string();
     let feed = db::get_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
