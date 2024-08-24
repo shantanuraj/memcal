@@ -18,7 +18,8 @@ async fn main() {
 
     dotenv().ok();
 
-    let db_addr = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/memcal.db".to_string());
+    let db_addr =
+        std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/memcal.db".to_string());
 
     let db_pool = SqlitePool::connect(&db_addr).await.unwrap();
     db::init_db(&db_pool).await.unwrap();

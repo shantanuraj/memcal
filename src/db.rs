@@ -61,7 +61,8 @@ impl TryFrom<EventRow> for Event {
             feed_id: row.feed_id,
             summary: row.summary,
             description: row.description,
-            start_time: DateTime::parse_from_rfc3339(&row.start_time)?.with_timezone(&start_time_tz),
+            start_time: DateTime::parse_from_rfc3339(&row.start_time)?
+                .with_timezone(&start_time_tz),
             start_time_tz,
             end_time: DateTime::parse_from_rfc3339(&row.end_time)?.with_timezone(&end_time_tz),
             end_time_tz,
@@ -74,6 +75,29 @@ impl TryFrom<EventRow> for Event {
             status: row.status,
         })
     }
+}
+
+#[derive(FromRow)]
+pub struct CalendarRow {
+    pub feed_id: i64,
+    pub version: String,      // VERSION: The iCalendar version (e.g., "2.0")
+    pub prod_id: String,      // PRODID: Identifier for the product that created the calendar
+    pub cal_scale: String,    // CALSCALE: Calendar scale (e.g., "GREGORIAN")
+    pub name: Option<String>, // X-WR-CALNAME: Calendar name (optional)
+
+    pub tz_id: String, // TZID: Timezone identifier (e.g., "Etc/UTC")
+
+    pub daylight_dtstart: Option<String>, // DTSTART: Start of daylight savings time
+    pub daylight_tzoffsetfrom: Option<String>, // TZOFFSETFROM: Offset before daylight savings time
+    pub daylight_tzoffsetto: Option<String>, // TZOFFSETTO: Offset during daylight savings time
+    pub daylight_rrule: Option<String>, // RRULE: Recurrence rule (e.g., "FREQ=YEARLY;BYDAY=2SU;BYMONTH=3")
+    pub daylight_tzname: Option<String>, // TZNAME: Timezone name (e.g., "EDT")
+
+    pub standard_dtstart: Option<String>, // DTSTART: Start of standard time
+    pub standard_tzoffsetfrom: Option<String>, // TZOFFSETFROM: Offset before standard time
+    pub standard_tzoffsetto: Option<String>, // TZOFFSETTO: Offset during standard time
+    pub standard_rrule: Option<String>, // RRULE: Recurrence rule (e.g., "FREQ=YEARLY;BYDAY=1SU;BYMONTH=11")
+    pub standard_tzname: Option<String>, // TZNAME: Timezone name (e.g., "EST")
 }
 
 pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -108,6 +132,31 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             status TEXT,
             constraint events_pk
                 unique (feed_id, start_time, end_time, start_time_tz, end_time_tz)
+        )",
+    )
+    .execute(pool)
+    .await?;
+
+    sqlx::query(
+        "CREATE TABLE IF NOT EXISTS calendars (
+            feed_id INTEGER NOT NULL PRIMARY KEY
+                constraint calendars_feeds_id_fk
+                    references feeds,
+            version TEXT NOT NULL,
+            prod_id TEXT NOT NULL,
+            cal_scale TEXT NOT NULL,
+            name TEXT,
+            tz_id TEXT NOT NULL,
+            daylight_dtstart TEXT,
+            daylight_tzoffsetfrom TEXT,
+            daylight_tzoffsetto TEXT,
+            daylight_rrule TEXT,
+            daylight_tzname TEXT,
+            standard_dtstart TEXT,
+            standard_tzoffsetfrom TEXT,
+            standard_tzoffsetto TEXT,
+            standard_rrule TEXT,
+            standard_tzname TEXT
         )",
     )
     .execute(pool)
@@ -210,6 +259,66 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
         event.organizer,
         event.sequence,
         event.status,
+    )
+    .execute(pool)
+    .await?;
+
+    Ok(())
+}
+
+pub async fn add_calendar(pool: &SqlitePool, calendar: &CalendarRow) -> Result<(), sqlx::Error> {
+    sqlx::query!(
+        "INSERT INTO calendars (
+            feed_id,
+            version,
+            prod_id,
+            cal_scale,
+            name,
+            tz_id,
+            daylight_dtstart,
+            daylight_tzoffsetfrom,
+            daylight_tzoffsetto,
+            daylight_rrule,
+            daylight_tzname,
+            standard_dtstart,
+            standard_tzoffsetfrom,
+            standard_tzoffsetto,
+            standard_rrule,
+            standard_tzname
+        ) VALUES (
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+        ) ON CONFLICT(feed_id) DO UPDATE SET
+            version = excluded.version,
+            prod_id = excluded.prod_id,
+            cal_scale = excluded.cal_scale,
+            name = excluded.name,
+            tz_id = excluded.tz_id,
+            daylight_dtstart = excluded.daylight_dtstart,
+            daylight_tzoffsetfrom = excluded.daylight_tzoffsetfrom,
+            daylight_tzoffsetto = excluded.daylight_tzoffsetto,
+            daylight_rrule = excluded.daylight_rrule,
+            daylight_tzname = excluded.daylight_tzname,
+            standard_dtstart = excluded.standard_dtstart,
+            standard_tzoffsetfrom = excluded.standard_tzoffsetfrom,
+            standard_tzoffsetto = excluded.standard_tzoffsetto,
+            standard_rrule = excluded.standard_rrule,
+            standard_tzname = excluded.standard_tzname",
+        calendar.feed_id,
+        calendar.version,
+        calendar.prod_id,
+        calendar.cal_scale,
+        calendar.name,
+        calendar.tz_id,
+        calendar.daylight_dtstart,
+        calendar.daylight_tzoffsetfrom,
+        calendar.daylight_tzoffsetto,
+        calendar.daylight_rrule,
+        calendar.daylight_tzname,
+        calendar.standard_dtstart,
+        calendar.standard_tzoffsetfrom,
+        calendar.standard_tzoffsetto,
+        calendar.standard_rrule,
+        calendar.standard_tzname,
     )
     .execute(pool)
     .await?;
