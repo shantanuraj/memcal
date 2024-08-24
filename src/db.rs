@@ -89,7 +89,7 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 
     sqlx::query(
         "CREATE TABLE IF NOT EXISTS events (
-            id INTEGER PRIMARY KEY,
+            id INTEGER NOT NULL PRIMARY KEY,
             feed_id INTEGER NOT NULL
                 constraint events_feeds_id_fk
                     references feeds,
@@ -184,7 +184,18 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
             status
         ) VALUES (
             ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
-        )",
+        ) ON CONFLICT(
+            feed_id, start_time, end_time, start_time_tz, end_time_tz
+        ) DO UPDATE SET
+            summary = excluded.summary,
+            description = excluded.description,
+            location = excluded.location,
+            uid = excluded.uid,
+            dtstamp = excluded.dtstamp,
+            dtstamp_tz = excluded.dtstamp_tz,
+            organizer = excluded.organizer,
+            sequence = excluded.sequence,
+            status = excluded.status",
         event.feed_id,
         event.summary,
         event.description,
@@ -213,9 +224,21 @@ pub async fn get_events_for_feed(
     let rows = sqlx::query_as!(
         EventRow,
         "SELECT
-            id, feed_id, summary, description, start_time, start_time_tz,
-            end_time, end_time_tz, location, uid, dtstamp, dtstamp_tz,
-            organizer, sequence, status
+            id,
+            feed_id,
+            summary,
+            description,
+            start_time,
+            start_time_tz,
+            end_time,
+            end_time_tz,
+            location,
+            uid,
+            dtstamp,
+            dtstamp_tz,
+            organizer,
+            sequence,
+            status
         FROM events WHERE feed_id = ?",
         feed_id
     )
