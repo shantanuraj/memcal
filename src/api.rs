@@ -1,10 +1,20 @@
 use axum::{
-    extract::{Path, State}, http::StatusCode, response::IntoResponse, Json
+    extract::{Path, State},
+    http::StatusCode,
+    response::IntoResponse,
+    Json,
 };
 use axum_extra::TypedHeader;
 use headers::{authorization::Bearer, Authorization};
 use hyper::HeaderMap;
-use ical::generator::{Emitter, IcalCalendarBuilder};
+use ical::{
+    generator::{Emitter, IcalCalendarBuilder},
+    parser::{
+        ical::component::{IcalTimeZone, IcalTimeZoneTransition, IcalTimeZoneTransitionType},
+        Component,
+    },
+    property::Property,
+};
 use serde::{Deserialize, Serialize};
 use sonyflake::Sonyflake;
 use sqlx::SqlitePool;
@@ -64,9 +74,99 @@ pub async fn get_feed(
         .scale(calendar.cal_scale)
         .prodid(calendar.prod_id);
 
-    let cal = cal.build();
-    let cal = cal.generate();
+    let mut timezone: IcalTimeZone = IcalTimeZone::new();
+    timezone.add_property(Property {
+        name: "TZID".to_string(),
+        value: Some(calendar.tz_id),
+        params: None,
+    });
 
+    let dtstart = calendar.daylight_dtstart;
+    let tzoffsetfrom = calendar.daylight_tzoffsetfrom;
+    let tzoffsetto = calendar.daylight_tzoffsetto;
+    let rrule = calendar.daylight_rrule;
+    let tzname = calendar.daylight_tzname;
+
+    let daylight = IcalTimeZoneTransition {
+        transition: IcalTimeZoneTransitionType::DAYLIGHT,
+        properties: vec![
+            Property {
+                name: "DTSTART".to_string(),
+                value: dtstart,
+                params: None,
+            },
+            Property {
+                name: "TZOFFSETFROM".to_string(),
+                value: tzoffsetfrom,
+                params: None,
+            },
+            Property {
+                name: "TZOFFSETTO".to_string(),
+                value: tzoffsetto,
+                params: None,
+            },
+            Property {
+                name: "RRULE".to_string(),
+                value: rrule,
+                params: None,
+            },
+            Property {
+                name: "TZNAME".to_string(),
+                value: tzname,
+                params: None,
+            },
+        ],
+    };
+
+    let dtstart = calendar.standard_dtstart;
+    let tzoffsetfrom = calendar.standard_tzoffsetfrom;
+    let tzoffsetto = calendar.standard_tzoffsetto;
+    let rrule = calendar.standard_rrule;
+    let tzname = calendar.standard_tzname;
+
+    let standard = IcalTimeZoneTransition {
+        transition: IcalTimeZoneTransitionType::STANDARD,
+        properties: vec![
+            Property {
+                name: "DTSTART".to_string(),
+                value: dtstart,
+                params: None,
+            },
+            Property {
+                name: "TZOFFSETFROM".to_string(),
+                value: tzoffsetfrom,
+                params: None,
+            },
+            Property {
+                name: "TZOFFSETTO".to_string(),
+                value: tzoffsetto,
+                params: None,
+            },
+            Property {
+                name: "RRULE".to_string(),
+                value: rrule,
+                params: None,
+            },
+            Property {
+                name: "TZNAME".to_string(),
+                value: tzname,
+                params: None,
+            },
+        ],
+    };
+
+    timezone.transitions.push(daylight);
+    timezone.transitions.push(standard);
+
+    let cal = cal
+        .add_tz(timezone)
+        .set(Property {
+            name: "X-WR-CALNAME".to_string(),
+            value: calendar.name,
+            params: None,
+        })
+        .build()
+        .generate();
 
     let mut headers = HeaderMap::new();
     headers.insert("content-type", "text/calendar".parse().unwrap());
