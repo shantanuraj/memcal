@@ -1,4 +1,5 @@
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
+use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 use sqlx::{FromRow, SqlitePool};
 
@@ -9,14 +10,14 @@ pub struct Feed {
     pub manage_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize, FromRow)]
+#[derive(Debug)]
 pub struct Event {
     pub id: i64,
     pub feed_id: i64,
     pub summary: String,
     pub description: Option<String>,
-    pub start_time: DateTime<Utc>,
-    pub end_time: DateTime<Utc>,
+    pub start_time: DateTime<Tz>,
+    pub end_time: DateTime<Tz>,
 }
 
 #[derive(FromRow)]
@@ -26,20 +27,25 @@ struct EventRow {
     summary: String,
     description: Option<String>,
     start_time: String,
+    start_time_tz: String,
     end_time: String,
+    end_time_tz: String,
 }
 
 impl TryFrom<EventRow> for Event {
     type Error = chrono::ParseError;
 
     fn try_from(row: EventRow) -> Result<Self, Self::Error> {
+        let start_time_tz = row.start_time_tz.parse::<Tz>().unwrap_or(Tz::UTC);
+        let end_time_tz = row.end_time_tz.parse::<Tz>().unwrap_or(Tz::UTC);
+
         Ok(Event {
             id: row.id,
             feed_id: row.feed_id,
             summary: row.summary,
             description: row.description,
-            start_time: DateTime::parse_from_rfc3339(&row.start_time)?.with_timezone(&Utc),
-            end_time: DateTime::parse_from_rfc3339(&row.end_time)?.with_timezone(&Utc),
+            start_time: DateTime::parse_from_rfc3339(&row.start_time)?.with_timezone(&start_time_tz),
+            end_time: DateTime::parse_from_rfc3339(&row.end_time)?.with_timezone(&end_time_tz),
         })
     }
 }
@@ -62,7 +68,9 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             summary TEXT NOT NULL,
             description TEXT,
             start_time TEXT NOT NULL,
+            start_time_tz TEXT NOT NULL,
             end_time TEXT NOT NULL,
+            end_time_tz TEXT NOT NULL,
             FOREIGN KEY (feed_id) REFERENCES feeds (id)
         )",
     )
@@ -70,6 +78,12 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     .await?;
 
     Ok(())
+}
+
+pub async fn get_all_feeds(pool: &SqlitePool) -> Result<Vec<Feed>, sqlx::Error> {
+    sqlx::query_as!(Feed, "SELECT id, url, manage_token FROM feeds")
+        .fetch_all(pool)
+        .await
 }
 
 pub async fn add_feed(
@@ -131,7 +145,7 @@ pub async fn get_events_for_feed(
 ) -> Result<Vec<Event>, sqlx::Error> {
     let rows = sqlx::query_as!(
         EventRow,
-        "SELECT id, feed_id, summary, description, start_time, end_time FROM events WHERE feed_id = ?",
+        "SELECT id, feed_id, summary, description, start_time, start_time_tz, end_time, end_time_tz FROM events WHERE feed_id = ?",
         feed_id
     )
     .fetch_all(pool)

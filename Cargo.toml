@@ -7,10 +7,12 @@ edition = "2021"
 axum = "0.7.5"
 axum-extra = { version = "0.9.3", features = ["typed-header"] }
 chrono = { version = "0.4.38", features = ["serde"] }
+chrono-tz = "0.9.0"
 headers = "0.4.0"
 http-body-util = "0.1"
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
+ical = { version = "0.11.0", features = ["serde", "serde-derive"] }
 icalendar = "0.16.3"
 maud = { version = "0.26.0", features = ["axum"] }
 reqwest = { version = "0.12.7", features = ["json"] }
