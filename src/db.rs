@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
-use sqlx::{FromRow, SqlitePool};
 use serde::{Deserialize, Serialize};
+use sqlx::{FromRow, SqlitePool};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Feed {
@@ -72,7 +72,12 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-pub async fn add_feed(pool: &SqlitePool, id: i64, url: &str, manage_token: &str) -> Result<(), sqlx::Error> {
+pub async fn add_feed(
+    pool: &SqlitePool,
+    id: i64,
+    url: &str,
+    manage_token: &str,
+) -> Result<(), sqlx::Error> {
     sqlx::query!(
         "INSERT INTO feeds (id, url, manage_token) VALUES (?, ?, ?)",
         id,
@@ -120,7 +125,10 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
     Ok(())
 }
 
-pub async fn get_events_for_feed(pool: &SqlitePool, feed_id: i64) -> Result<Vec<Event>, sqlx::Error> {
+pub async fn get_events_for_feed(
+    pool: &SqlitePool,
+    feed_id: i64,
+) -> Result<Vec<Event>, sqlx::Error> {
     let rows = sqlx::query_as!(
         EventRow,
         "SELECT id, feed_id, summary, description, start_time, end_time FROM events WHERE feed_id = ?",
@@ -130,7 +138,8 @@ pub async fn get_events_for_feed(pool: &SqlitePool, feed_id: i64) -> Result<Vec<
     .await?;
 
     let events: Result<Vec<Event>, _> = rows.into_iter().map(Event::try_from).collect();
-    events.map_err(|e| sqlx::Error::Decode(Box::new(e)))}
+    events.map_err(|e| sqlx::Error::Decode(Box::new(e)))
+}
 
 pub async fn delete_events_for_feed(pool: &SqlitePool, feed_id: i64) -> Result<(), sqlx::Error> {
     sqlx::query!("DELETE FROM events WHERE feed_id = ?", feed_id)

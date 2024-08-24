@@ -1,4 +1,4 @@
-use maud::{html, DOCTYPE, PreEscaped};
+use maud::{html, PreEscaped, DOCTYPE};
 
 pub async fn index() -> maud::Markup {
     html! {
