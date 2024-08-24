@@ -15,7 +15,9 @@ mod web;
 async fn main() {
     tracing_subscriber::fmt::init();
 
-    let db_pool = SqlitePool::connect("sqlite:data/memcal.db").await.unwrap();
+    let db_addr = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/memcal.db".to_string());
+
+    let db_pool = SqlitePool::connect(&db_addr).await.unwrap();
     db::init_db(&db_pool).await.unwrap();
 
     let app = Router::new()
