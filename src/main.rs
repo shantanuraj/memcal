@@ -44,6 +44,8 @@ async fn main() {
                         if let Err(e) = ical::sync_ical_events(&sync_pool, feed.id, &feed.url).await
                         {
                             eprintln!("Error syncing feed {}: {}", feed.id, e);
+                        } else {
+                            info!("Synced feed {}", feed.id);
                         }
                     }
                 }
