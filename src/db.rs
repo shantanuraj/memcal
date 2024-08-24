@@ -326,6 +326,16 @@ pub async fn add_calendar(pool: &SqlitePool, calendar: &CalendarRow) -> Result<(
     Ok(())
 }
 
+pub async fn get_calendar(pool: &SqlitePool, feed_id: i64) -> Result<CalendarRow, sqlx::Error> {
+    sqlx::query_as!(
+        CalendarRow,
+        "SELECT * FROM calendars WHERE feed_id = ?",
+        feed_id
+    )
+    .fetch_one(pool)
+    .await
+}
+
 pub async fn get_events_for_feed(
     pool: &SqlitePool,
     feed_id: i64,

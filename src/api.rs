@@ -1,10 +1,10 @@
 use axum::{
-    extract::{Path, State},
-    http::StatusCode,
-    Json,
+    extract::{Path, State}, http::StatusCode, response::IntoResponse, Json
 };
 use axum_extra::TypedHeader;
 use headers::{authorization::Bearer, Authorization};
+use hyper::HeaderMap;
+use ical::generator::{Emitter, IcalCalendarBuilder};
 use serde::{Deserialize, Serialize};
 use sonyflake::Sonyflake;
 use sqlx::SqlitePool;
@@ -46,18 +46,32 @@ pub async fn add_feed(
 pub async fn get_feed(
     State(pool): State<SqlitePool>,
     Path(feed_id): Path<i64>,
-) -> Result<String, StatusCode> {
-    let feed = db::get_feed(&pool, feed_id)
+) -> Result<impl IntoResponse, StatusCode> {
+    db::get_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(StatusCode::NOT_FOUND)?;
+
+    let calendar = db::get_calendar(&pool, feed_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     let _events = db::get_events_for_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    // TODO: Convert events to iCal format
-    Ok(format!("iCal data for feed: {}", feed.url))
+    let cal = IcalCalendarBuilder::version(calendar.version)
+        .scale(calendar.cal_scale)
+        .prodid(calendar.prod_id);
+
+    let cal = cal.build();
+    let cal = cal.generate();
+
+
+    let mut headers = HeaderMap::new();
+    headers.insert("content-type", "text/calendar".parse().unwrap());
+
+    Ok((headers, cal))
 }
 
 pub async fn delete_feed(
