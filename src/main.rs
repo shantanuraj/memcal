@@ -2,6 +2,7 @@ use axum::{
     routing::{get, post},
     Router,
 };
+use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePool;
 use std::net::SocketAddr;
 use tracing::info;
@@ -14,6 +15,8 @@ mod web;
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt::init();
+
+    dotenv().ok();
 
     let db_addr = std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/memcal.db".to_string());
 
