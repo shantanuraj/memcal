@@ -1,12 +1,13 @@
 use axum::{
-    extract::{Path, State},
+    async_trait,
+    extract::{FromRequest, Path, Request, State},
     http::StatusCode,
-    response::IntoResponse,
-    Json,
+    response::{IntoResponse, Redirect, Response},
+    Form, Json, RequestExt,
 };
 use axum_extra::TypedHeader;
-use headers::{authorization::Bearer, Authorization};
-use hyper::HeaderMap;
+use headers::{authorization::Bearer, Authorization, ContentType};
+use hyper::{header::CONTENT_TYPE, HeaderMap};
 use ical::{
     generator::{Emitter, IcalCalendarBuilder, IcalEventBuilder},
     ical_param, ical_property,
@@ -37,8 +38,9 @@ pub struct AddFeedResponse {
 
 pub async fn add_feed(
     State(pool): State<SqlitePool>,
-    Json(payload): Json<AddFeedRequest>,
-) -> Result<Json<AddFeedResponse>, StatusCode> {
+    TypedHeader(content_type): TypedHeader<ContentType>,
+    JsonOrForm(payload): JsonOrForm<AddFeedRequest>,
+) -> Result<Response, StatusCode> {
     let sf = Sonyflake::new().unwrap();
     let feed_id = sf.next_id().unwrap() as i64;
     let manage_token = Uuid::new_v4().to_string();
@@ -47,11 +49,17 @@ pub async fn add_feed(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(Json(AddFeedResponse {
-        url: format!("/feed/{}", feed_id),
-        manage_token: manage_token.clone(),
-        manage_url: format!("/feed/{}/{}", feed_id, manage_token),
-    }))
+    if content_type == ContentType::form_url_encoded() {
+        let redirect_url = format!("/feed/{}/{}", feed_id, manage_token);
+        Ok(Redirect::to(&redirect_url).into_response())
+    } else {
+        let response = AddFeedResponse {
+            url: format!("/feed/{}", feed_id),
+            manage_token: manage_token.clone(),
+            manage_url: format!("/feed/{}/{}", feed_id, manage_token),
+        };
+        Ok(Json(response).into_response())
+    }
 }
 
 pub async fn get_feed(
@@ -207,7 +215,7 @@ pub async fn get_feed(
     let ics = cal.build().generate();
 
     let mut headers = HeaderMap::new();
-    headers.insert("content-type", "text/calendar".parse().unwrap());
+    headers.insert(CONTENT_TYPE, "text/calendar".parse().unwrap());
 
     Ok((headers, ics))
 }
@@ -240,4 +248,36 @@ pub async fn delete_feed(
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
     Ok(StatusCode::NO_CONTENT)
+}
+
+pub struct JsonOrForm<T>(T);
+
+#[async_trait]
+impl<S, T> FromRequest<S> for JsonOrForm<T>
+where
+    S: Send + Sync,
+    Json<T>: FromRequest<()>,
+    Form<T>: FromRequest<()>,
+    T: 'static,
+{
+    type Rejection = Response;
+
+    async fn from_request(req: Request, _state: &S) -> Result<Self, Self::Rejection> {
+        let content_type_header = req.headers().get(CONTENT_TYPE);
+        let content_type = content_type_header.and_then(|value| value.to_str().ok());
+
+        if let Some(content_type) = content_type {
+            if content_type.starts_with("application/json") {
+                let Json(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
+                return Ok(Self(payload));
+            }
+
+            if content_type.starts_with("application/x-www-form-urlencoded") {
+                let Form(payload) = req.extract().await.map_err(IntoResponse::into_response)?;
+                return Ok(Self(payload));
+            }
+        }
+
+        Err(StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response())
+    }
 }

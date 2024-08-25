@@ -1,7 +1,7 @@
-use maud::{html, PreEscaped, DOCTYPE};
-use axum::extract::{Path, State};
-use sqlx::SqlitePool;
 use crate::db;
+use axum::extract::{Path, State};
+use maud::{html, PreEscaped, DOCTYPE};
+use sqlx::SqlitePool;
 
 pub async fn index() -> maud::Markup {
     html! {
