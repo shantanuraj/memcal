@@ -34,20 +34,31 @@ pub async fn sync_ical_events(
         .get_property("X-WR-CALNAME")
         .and_then(|p| p.value.clone());
 
-    let timezone = calendar.timezones.first().expect("No timezone found");
+    let timezone = calendar.timezones.first();
     let tz_id = timezone
-        .get_property("TZID")
-        .and_then(|p| p.value.clone())
+        .and_then(|t| t.get_property("TZID").and_then(|p| p.value.clone()))
         .unwrap_or("Etc/UTC".to_string());
 
-    let daylight = timezone
-        .transitions
-        .iter()
-        .find(|t| matches!(t.transition, IcalTimeZoneTransitionType::DAYLIGHT));
-    let standard = timezone
-        .transitions
-        .iter()
-        .find(|t| matches!(t.transition, IcalTimeZoneTransitionType::STANDARD));
+    let daylight = {
+        if let Some(timezone) = timezone {
+            timezone
+                .transitions
+                .iter()
+                .find(|t| matches!(t.transition, IcalTimeZoneTransitionType::DAYLIGHT))
+        } else {
+            None
+        }
+    };
+    let standard = {
+        if let Some(timezone) = timezone {
+            timezone
+                .transitions
+                .iter()
+                .find(|t| matches!(t.transition, IcalTimeZoneTransitionType::STANDARD))
+        } else {
+            None
+        }
+    };
 
     let daylight_dtstart =
         daylight.and_then(|t| t.get_property("DTSTART").and_then(|p| p.value.clone()));
