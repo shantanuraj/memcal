@@ -8,7 +8,8 @@ use axum_extra::TypedHeader;
 use headers::{authorization::Bearer, Authorization};
 use hyper::HeaderMap;
 use ical::{
-    generator::{Emitter, IcalCalendarBuilder},
+    generator::{Emitter, IcalCalendarBuilder, IcalEventBuilder},
+    ical_param, ical_property,
     parser::{
         ical::component::{IcalTimeZone, IcalTimeZoneTransition, IcalTimeZoneTransitionType},
         Component,
@@ -66,7 +67,7 @@ pub async fn get_feed(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    let _events = db::get_events_for_feed(&pool, feed_id)
+    let events = db::get_events_for_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
@@ -158,20 +159,57 @@ pub async fn get_feed(
     timezone.transitions.push(daylight);
     timezone.transitions.push(standard);
 
-    let cal = cal
-        .add_tz(timezone)
-        .set(Property {
-            name: "X-WR-CALNAME".to_string(),
-            value: calendar.name,
-            params: None,
+    let mut cal = cal.add_tz(timezone).set(Property {
+        name: "X-WR-CALNAME".to_string(),
+        value: calendar.name,
+        params: None,
+    });
+
+    let events = events
+        .iter()
+        .map(|event| {
+            let mut ev = IcalEventBuilder::tzid(event.start_time_tz.to_string())
+                .uid(event.uid.clone())
+                .changed(event.dtstamp.format("%Y%m%dT%H%M%S").to_string())
+                .start(event.start_time.format("%Y%m%dT%H%M%S").to_string())
+                .end(event.end_time.format("%Y%m%dT%H%M%S").to_string())
+                .set(ical_property!(
+                    "DESCRIPTION",
+                    &event.description.clone().unwrap_or("".to_string())
+                ))
+                .set(ical_property!("SUMMARY", &event.summary));
+
+            if let Some(location) = &event.location {
+                ev = ev.set(ical_property!("LOCATION", location));
+            }
+            if let Some(organizer) = &event.organizer {
+                ev = ev.set(ical_property!(
+                    "ORGANIZER",
+                    organizer,
+                    ical_param!("CN", format!("'{}'", "TODO"))
+                ));
+            }
+            if let Some(seq) = event.sequence {
+                ev = ev.set(ical_property!("SEQUENCE", seq.to_string()));
+            }
+            if let Some(status) = &event.status {
+                ev = ev.set(ical_property!("STATUS", status));
+            }
+
+            ev.build()
         })
-        .build()
-        .generate();
+        .collect::<Vec<_>>();
+
+    for event in events {
+        cal = cal.add_event(event);
+    }
+
+    let ics = cal.build().generate();
 
     let mut headers = HeaderMap::new();
     headers.insert("content-type", "text/calendar".parse().unwrap());
 
-    Ok((headers, cal))
+    Ok((headers, ics))
 }
 
 pub async fn delete_feed(
