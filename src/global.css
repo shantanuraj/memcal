@@ -9,6 +9,9 @@
 body {
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: #f0f0f0;
+  color: #333;
 }
 img,
 picture,
@@ -39,4 +42,85 @@ h6 {
 #root,
 #__next {
   isolation: isolate;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+header {
+  margin-bottom: 2rem;
+}
+
+h1 {
+  font-size: 2.5rem;
+  color: #2c3e50;
+}
+
+h2 {
+  font-size: 1.8rem;
+  color: #34495e;
+  margin-bottom: 1rem;
+}
+
+form {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+input[type="url"] {
+  flex-grow: 1;
+  padding: 0.5rem;
+  border: 1px solid #bdc3c7;
+  border-radius: 4px;
+}
+
+button {
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+button:hover {
+  background-color: #2980b9;
+}
+
+.event-list {
+  list-style-type: none;
+  padding: 0;
+}
+
+.event-item {
+  background-color: white;
+  border-radius: 4px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.event-item h3 {
+  font-size: 1.2rem;
+  margin-bottom: 0.5rem;
+  color: #2c3e50;
+}
+
+.event-item p {
+  font-size: 0.9rem;
+  color: #7f8c8d;
+}
+
+.delete-btn {
+  background-color: #e74c3c;
+  margin-top: 1rem;
+}
+
+.delete-btn:hover {
+  background-color: #c0392b;
 }
