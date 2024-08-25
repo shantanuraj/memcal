@@ -18,15 +18,25 @@ pub async fn index() -> maud::Markup {
             }
         }
         body {
-            .container {
-                header {
-                    h1 { "memcal" }
-                    p { "An iCal compatible server with memory." }
+            .app-container {
+                .sidebar {
+                    .logo { "memcal" }
+                    nav {
+                        a href="#" { "Home" }
+                        a href="#" { "Feed" }
+                    }
                 }
-                main {
-                    form action="/feed" method="POST" {
-                        input placeholder="iCal feed URL" type="url" id="url" name="url" required;
-                        button type="submit" { "Add Feed" }
+                .main-content {
+                    header {
+                        h1 { "Welcome to memcal" }
+                        p { "An iCal compatible server with memory." }
+                    }
+                    .card {
+                        h2 { "Add New Feed" }
+                        form action="/feed" method="POST" {
+                            input placeholder="iCal feed URL" type="url" id="url" name="url" required;
+                            button type="submit" { "Add Feed" }
+                        }
                     }
                 }
             }
@@ -78,32 +88,53 @@ pub async fn feed_page(
             }
         }
         body {
-            .container {
-                header {
-                    h1 { (feed_name) }
-                    p { "URL: " a target="_blank" rel="noopener noreferrer" href=(feed.url.clone()) { (feed.url) } }
+            .app-container {
+                .sidebar {
+                    .logo { "memcal" }
+                    nav {
+                        a href="/" { "Home" }
+                        a href="#" class="active" { "Feed" }
+                    }
                 }
-                main {
-                    h2 { "Events" }
-                    @if events.is_empty() {
-                        p { "No events found for this feed." }
-                    } @else {
-                        ul.event-list {
-                            @for event in events {
-                                li.event-item {
-                                    h3 { (event.summary) }
-                                    p { "Start: " (event.start_time.to_rfc3339()) }
-                                    p { "End: " (event.end_time.to_rfc3339()) }
-                                    @if let Some(description) = &event.description {
-                                        @if !description.is_empty() {
-                                            p { "Description: " (description) }
+                .main-content {
+                    header {
+                        h1 { (feed_name) }
+                        p.feed-url {
+                            "URL: "
+                            a target="_blank" rel="noopener noreferrer" href=(feed.url.clone()) { (feed.url) }
+                        }
+                    }
+                    .card {
+                        h2 { "Events" }
+                        @if events.is_empty() {
+                            p.no-events { "No events found for this feed." }
+                        } @else {
+                            ul.event-list {
+                                @for event in events {
+                                    li.event-item {
+                                        h3 { (event.summary) }
+                                        p.event-time {
+                                            span.label { "Start: " }
+                                            (event.start_time.format("%Y-%m-%d %H:%M"))
+                                        }
+                                        p.event-time {
+                                            span.label { "End: " }
+                                            (event.end_time.format("%Y-%m-%d %H:%M"))
+                                        }
+                                        @if let Some(description) = &event.description {
+                                            @if !description.is_empty() {
+                                                p.event-description {
+                                                    span.label { "Description: " }
+                                                    (description)
+                                                }
+                                            }
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                    form action={ "/feed/{}/{}" (feed_id) (feed.manage_token) } method="POST" {
+                    form.delete-form action={ "/feed/{}/{}" (feed_id) (feed.manage_token) } method="POST" {
                         input type="hidden" name="_method" value="DELETE";
                         button type="submit" class="delete-btn" { "Delete Feed" }
                     }
