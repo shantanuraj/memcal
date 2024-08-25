@@ -377,7 +377,8 @@ pub async fn get_events_for_feed(
             organizer_cn,
             sequence,
             status
-        FROM events WHERE feed_id = ?",
+        FROM events WHERE feed_id = ?
+        ORDER BY start_time DESC",
         feed_id
     )
     .fetch_all(pool)
