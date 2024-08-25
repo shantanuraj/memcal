@@ -231,6 +231,10 @@ pub async fn delete_feed(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
+    db::delete_calendar(&pool, feed_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     db::delete_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;

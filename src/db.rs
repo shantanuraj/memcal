@@ -343,6 +343,14 @@ pub async fn get_calendar(pool: &SqlitePool, feed_id: i64) -> Result<CalendarRow
     .await
 }
 
+pub async fn delete_calendar(pool: &SqlitePool, feed_id: i64) -> Result<(), sqlx::Error> {
+    sqlx::query!("DELETE FROM calendars WHERE feed_id = ?", feed_id)
+        .execute(pool)
+        .await?;
+
+    Ok(())
+}
+
 pub async fn get_events_for_feed(
     pool: &SqlitePool,
     feed_id: i64,
