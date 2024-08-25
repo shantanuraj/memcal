@@ -1,12 +1,13 @@
 use axum::{
     async_trait,
     extract::{FromRequest, Path, Request, State},
+    http::Method,
     http::StatusCode,
     response::{IntoResponse, Redirect, Response},
     Form, Json, RequestExt,
 };
 use axum_extra::TypedHeader;
-use headers::{authorization::Bearer, Authorization, ContentType};
+use headers::ContentType;
 use hyper::{header::CONTENT_TYPE, HeaderMap};
 use ical::{
     generator::{Emitter, IcalCalendarBuilder, IcalEventBuilder},
@@ -232,12 +233,25 @@ pub async fn get_feed(
     Ok((headers, ics))
 }
 
+
+#[derive(Deserialize)]
+pub struct DeleteFeedRequest {
+    #[serde(rename = "_method")]
+    method: Option<String>,
+}
+
 pub async fn delete_feed(
+    method: Method,
     State(pool): State<SqlitePool>,
-    Path(feed_id): Path<i64>,
-    TypedHeader(Authorization(auth)): TypedHeader<Authorization<Bearer>>,
-) -> Result<StatusCode, StatusCode> {
-    let manage_token = auth.token().to_string();
+    Path((feed_id, manage_token)): Path<(i64, String)>,
+    JsonOrForm(payload): JsonOrForm<DeleteFeedRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let is_form_request = payload.method.is_some();
+    let method = payload.method.unwrap_or(method.to_string());
+    if method != "DELETE" {
+        return Err(StatusCode::METHOD_NOT_ALLOWED);
+    }
+
     let feed = db::get_feed(&pool, feed_id)
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
@@ -259,7 +273,11 @@ pub async fn delete_feed(
         .await
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 
-    Ok(StatusCode::NO_CONTENT)
+    if is_form_request {
+        Ok(Redirect::to("/").into_response())
+    } else {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    }
 }
 
 pub struct JsonOrForm<T>(T);

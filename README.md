@@ -26,7 +26,7 @@ The API is a simple CRUD interface that allows to manage iCal feeds.
 
 - `POST /feed` - Add a new iCal feed
 - `GET /feed/:id` - Get a memorized iCal feed
-- `DELETE /feed/:id` - Remove a memorized iCal feed
+- `DELETE /feed/:id/:manage_token` - Remove a memorized iCal feed
 
 The syncing is independent of the API. It's a background process that runs
 every 5 minutes. It fetches the iCal feeds and updates the datastore.
@@ -80,8 +80,15 @@ To delete a memorized feed you can use the feed url you got when adding the feed
 
 ```bash
 curl -X DELETE \
-    -H "Authorization: Bearer <manage_token>" \
-    http://localhost:8080/feed/<feed_id>
+    -H "content-type: application/json" -d '{}' \
+    http://localhost:8080/feed/<feed_id>/<manage_token>
+
+# or to support web forms that don't support DELETE
+
+curl -X POST \
+    -H "content-type: application/x-www-form-urlencoded" \
+    -d "_method=DELETE" \
+    http://localhost:8080/feed/<feed_id>/<manage_token>
 ```
 
 This will respond with a 204 status code if the feed was deleted successfully.

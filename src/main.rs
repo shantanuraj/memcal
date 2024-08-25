@@ -27,8 +27,13 @@ async fn main() {
     let app = Router::new()
         .route("/", get(web::index))
         .route("/feed", post(api::add_feed))
-        .route("/feed/:id", get(api::get_feed).delete(api::delete_feed))
-        .route("/feed/:id/:manage_token", get(web::feed_page))
+        .route("/feed/:id", get(api::get_feed))
+        .route(
+            "/feed/:id/:manage_token",
+            get(web::feed_page)
+                .delete(api::delete_feed)
+                .post(api::delete_feed),
+        )
         .with_state(db_pool.clone());
 
     let port = std::env::var("PORT")

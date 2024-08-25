@@ -46,7 +46,7 @@ pub async fn index() -> maud::Markup {
 
 pub async fn feed_page(
     State(pool): State<SqlitePool>,
-    Path((feed_id, _manage_token)): Path<(i64, String)>,
+    Path((feed_id, manage_token)): Path<(i64, String)>,
 ) -> Result<maud::Markup, axum::http::StatusCode> {
     let feed = db::get_feed(&pool, feed_id)
         .await
@@ -75,6 +75,7 @@ pub async fn feed_page(
 
     let feed_name = calendar.name.unwrap_or("Feed".to_string());
     let title = format!("{} | memcal", feed_name);
+    let delete_url = format!("/feed/{}/{}", feed_id, manage_token);
 
     Ok(html! {
         (DOCTYPE)
@@ -134,7 +135,7 @@ pub async fn feed_page(
                             }
                         }
                     }
-                    form.delete-form action={ "/feed/{}/{}" (feed_id) (feed.manage_token) } method="POST" {
+                    form.delete-form action={ (delete_url) } method="POST" {
                         input type="hidden" name="_method" value="DELETE";
                         button type="submit" class="delete-btn" { "Delete Feed" }
                     }
