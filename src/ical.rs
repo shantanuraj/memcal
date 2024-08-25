@@ -202,6 +202,15 @@ pub async fn sync_ical_events(
             .find(|p| p.name == "ORGANIZER")
             .and_then(|p| p.value.clone());
 
+        let organizer_cn = event
+            .properties
+            .iter()
+            .find(|p| p.name == "ORGANIZER")
+            .and_then(|p| p.params.as_ref())
+            .and_then(|p| p.iter().find(|(k, _)| k == "CN"))
+            .and_then(|(_, v)| v.first())
+            .map(|v| v.clone());
+
         let sequence = event
             .properties
             .iter()
@@ -229,6 +238,7 @@ pub async fn sync_ical_events(
             dtstamp,
             dtstamp_tz,
             organizer,
+            organizer_cn,
             sequence,
             status,
         };

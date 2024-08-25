@@ -25,6 +25,7 @@ pub struct Event {
     pub dtstamp: DateTime<Tz>,
     pub dtstamp_tz: Tz,
     pub organizer: Option<String>,
+    pub organizer_cn: Option<String>,
     pub sequence: Option<i64>,
     pub status: Option<String>,
 }
@@ -44,6 +45,7 @@ struct EventRow {
     dtstamp: String,
     dtstamp_tz: String,
     organizer: Option<String>,
+    organizer_cn: Option<String>,
     sequence: Option<i64>,
     status: Option<String>,
 }
@@ -71,6 +73,7 @@ impl TryFrom<EventRow> for Event {
             dtstamp: DateTime::parse_from_rfc3339(&row.dtstamp)?.with_timezone(&dtstamp_tz),
             dtstamp_tz,
             organizer: row.organizer,
+            organizer_cn: row.organizer_cn,
             sequence: row.sequence,
             status: row.status,
         })
@@ -128,6 +131,7 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             dtstamp TEXT NOT NULL,
             dtstamp_tz TEXT NOT NULL,
             organizer TEXT,
+            organizer_cn TEXT,
             sequence INTEGER,
             status TEXT,
             constraint events_pk
@@ -229,10 +233,11 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
             dtstamp,
             dtstamp_tz,
             organizer,
+            organizer_cn,
             sequence,
             status
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         ) ON CONFLICT(
             feed_id, start_time, end_time, start_time_tz, end_time_tz
         ) DO UPDATE SET
@@ -243,6 +248,7 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
             dtstamp = excluded.dtstamp,
             dtstamp_tz = excluded.dtstamp_tz,
             organizer = excluded.organizer,
+            organizer_cn = excluded.organizer_cn,
             sequence = excluded.sequence,
             status = excluded.status",
         event.feed_id,
@@ -257,6 +263,7 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
         dtstamp,
         dtstamp_tz,
         event.organizer,
+        event.organizer_cn,
         event.sequence,
         event.status,
     )
@@ -356,6 +363,7 @@ pub async fn get_events_for_feed(
             dtstamp,
             dtstamp_tz,
             organizer,
+            organizer_cn,
             sequence,
             status
         FROM events WHERE feed_id = ?",

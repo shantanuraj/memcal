@@ -186,7 +186,7 @@ pub async fn get_feed(
                 ev = ev.set(ical_property!(
                     "ORGANIZER",
                     organizer,
-                    ical_param!("CN", format!("'{}'", "TODO"))
+                    ical_param!("CN", event.organizer_cn.clone().unwrap_or("".to_string()))
                 ));
             }
             if let Some(seq) = event.sequence {
