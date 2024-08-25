@@ -1,4 +1,4 @@
-use crate::db;
+use crate::{db, ical::sync_ical_events};
 use axum::extract::{Path, State};
 use maud::{html, PreEscaped, DOCTYPE};
 use sqlx::SqlitePool;
@@ -43,9 +43,21 @@ pub async fn feed_page(
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
         .ok_or(axum::http::StatusCode::NOT_FOUND)?;
 
-    let calendar = db::get_calendar(&pool, feed_id)
+    let mut calendar = db::get_calendar(&pool, feed_id)
         .await
         .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if calendar.is_none() {
+        if let Err(e) = sync_ical_events(&pool, feed_id, &feed.url).await {
+            eprintln!("Error syncing feed {}: {}", feed_id, e);
+            return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        calendar = db::get_calendar(&pool, feed_id)
+            .await
+            .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    let calendar = calendar.unwrap();
 
     let events = db::get_events_for_feed(&pool, feed_id)
         .await

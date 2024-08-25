@@ -22,7 +22,7 @@ use sonyflake::Sonyflake;
 use sqlx::SqlitePool;
 use uuid::Uuid;
 
-use crate::db;
+use crate::{db, ical::sync_ical_events};
 
 #[derive(Deserialize)]
 pub struct AddFeedRequest {
@@ -66,14 +66,26 @@ pub async fn get_feed(
     State(pool): State<SqlitePool>,
     Path(feed_id): Path<i64>,
 ) -> Result<impl IntoResponse, StatusCode> {
-    db::get_feed(&pool, feed_id)
+    let feed = db::get_feed(&pool, feed_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
-        .ok_or(StatusCode::NOT_FOUND)?;
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(axum::http::StatusCode::NOT_FOUND)?;
 
-    let calendar = db::get_calendar(&pool, feed_id)
+    let mut calendar = db::get_calendar(&pool, feed_id)
         .await
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+        .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    if calendar.is_none() {
+        if let Err(e) = sync_ical_events(&pool, feed_id, &feed.url).await {
+            eprintln!("Error syncing feed {}: {}", feed_id, e);
+            return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
+        }
+        calendar = db::get_calendar(&pool, feed_id)
+            .await
+            .map_err(|_| axum::http::StatusCode::INTERNAL_SERVER_ERROR)?;
+    }
+
+    let calendar = calendar.unwrap();
 
     let events = db::get_events_for_feed(&pool, feed_id)
         .await
