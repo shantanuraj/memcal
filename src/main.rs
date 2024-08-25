@@ -40,6 +40,13 @@ async fn main() {
 
     info!("Listening on http://localhost:{}", port);
 
+    let sync_interval = std::env::var("SYNC_INTERVAL")
+        .unwrap_or_else(|_| "300".to_string())
+        .parse::<u64>()
+        .expect("SYNC_INTERVAL must be a number");
+
+    info!("Syncing feeds every {} seconds", sync_interval);
+
     // Spawn a background task to sync feeds every 5 minutes
     let sync_pool = db_pool.clone();
     tokio::spawn(async move {
@@ -57,7 +64,7 @@ async fn main() {
                 }
                 Err(e) => eprintln!("Error fetching feeds: {}", e),
             }
-            tokio::time::sleep(std::time::Duration::from_secs(300)).await;
+            tokio::time::sleep(std::time::Duration::from_secs(sync_interval)).await;
         }
     });
 
