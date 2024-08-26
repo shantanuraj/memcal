@@ -130,6 +130,14 @@ pub async fn feed_page(
                                                 }
                                             }
                                         }
+                                        @if let Some(location) = &event.location {
+                                            @if !location.is_empty() {
+                                                p.event-location {
+                                                    span.label { "Location: " }
+                                                    (location.replace(r"\,", ","))
+                                                }
+                                            }
+                                        }
                                     }
                                 }
                             }
