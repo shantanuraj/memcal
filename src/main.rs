@@ -10,6 +10,7 @@ use tracing::info;
 mod api;
 mod db;
 mod ical;
+mod logger;
 mod web;
 
 #[tokio::main]
@@ -34,7 +35,8 @@ async fn main() {
                 .delete(api::delete_feed)
                 .post(api::delete_feed),
         )
-        .with_state(db_pool.clone());
+        .with_state(db_pool.clone())
+        .layer(axum::middleware::from_fn(logger::log_request_response));
 
     let port = std::env::var("PORT")
         .unwrap_or_else(|_| "8080".to_string())
@@ -74,7 +76,10 @@ async fn main() {
         }
     });
 
-    axum::serve(listener, app.with_state(db_pool))
-        .await
-        .unwrap();
+    axum::serve(
+        listener,
+        app.into_make_service_with_connect_info::<SocketAddr>(),
+    )
+    .await
+    .unwrap();
 }

@@ -233,7 +233,6 @@ pub async fn get_feed(
     Ok((headers, ics))
 }
 
-
 #[derive(Deserialize)]
 pub struct DeleteFeedRequest {
     #[serde(rename = "_method")]
