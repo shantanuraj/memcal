@@ -35,6 +35,7 @@ async fn main() {
                 .delete(api::delete_feed)
                 .post(api::delete_feed),
         )
+        .route("/robots.txt", get(web::robots_txt))
         .with_state(db_pool.clone())
         .layer(axum::middleware::from_fn(logger::log_request_response));
 

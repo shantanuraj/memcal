@@ -2,6 +2,7 @@ use crate::{db, ical::sync_ical_events};
 use axum::extract::{Path, State};
 use maud::{html, PreEscaped, DOCTYPE};
 use sqlx::SqlitePool;
+use axum::response::IntoResponse;
 
 pub async fn index() -> maud::Markup {
     html! {
@@ -151,4 +152,8 @@ pub async fn feed_page(
             }
         }
     })
+}
+
+pub async fn robots_txt() -> impl IntoResponse {
+    include_str!("robots.txt")
 }
