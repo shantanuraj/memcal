@@ -5,8 +5,8 @@ use axum::{
 use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePool;
 use std::net::SocketAddr;
-use tracing::info;
 use tower_http::services::ServeDir;
+use tracing::info;
 
 mod api;
 mod db;

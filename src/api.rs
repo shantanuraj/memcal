@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use axum::{
     async_trait,
     extract::{FromRequest, Path, Request, State},
@@ -7,8 +9,8 @@ use axum::{
     Form, Json, RequestExt,
 };
 use axum_extra::TypedHeader;
-use headers::ContentType;
-use hyper::{header::CONTENT_TYPE, HeaderMap};
+use headers::{ContentType, ETag, IfNoneMatch};
+use hyper::{header::CONTENT_TYPE, header::ETAG};
 use ical::{
     generator::{Emitter, IcalCalendarBuilder, IcalEventBuilder},
     ical_param, ical_property,
@@ -65,6 +67,7 @@ pub async fn add_feed(
 
 pub async fn get_feed(
     State(pool): State<SqlitePool>,
+    TypedHeader(if_none_match): TypedHeader<IfNoneMatch>,
     Path(feed_id): Path<i64>,
 ) -> Result<impl IntoResponse, StatusCode> {
     let feed = db::get_feed(&pool, feed_id)
@@ -87,6 +90,18 @@ pub async fn get_feed(
     }
 
     let calendar = calendar.unwrap();
+
+    if calendar.etag.is_some() {
+        let etag = ETag::from_str(&calendar.etag.clone().unwrap());
+        match etag {
+            Ok(etag) => {
+                if !if_none_match.precondition_passes(&etag) {
+                    return Ok(StatusCode::NOT_MODIFIED.into_response());
+                }
+            }
+            Err(_) => {}
+        };
+    }
 
     let events = db::get_events_for_feed(&pool, feed_id)
         .await
@@ -227,10 +242,12 @@ pub async fn get_feed(
 
     let ics = cal.build().generate();
 
-    let mut headers = HeaderMap::new();
-    headers.insert(CONTENT_TYPE, "text/calendar".parse().unwrap());
-
-    Ok((headers, ics))
+    Ok(Response::builder()
+        .header(CONTENT_TYPE, "text/calendar")
+        .header(ETAG, calendar.etag.unwrap())
+        .body(ics)
+        .unwrap()
+        .into_response())
 }
 
 #[derive(Deserialize)]
