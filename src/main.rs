@@ -6,6 +6,7 @@ use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePool;
 use std::net::SocketAddr;
 use tracing::info;
+use tower_http::services::ServeDir;
 
 mod api;
 mod db;
@@ -36,6 +37,7 @@ async fn main() {
                 .post(api::delete_feed),
         )
         .route("/robots.txt", get(web::robots_txt))
+        .nest_service("/public", ServeDir::new("public"))
         .with_state(db_pool.clone())
         .layer(axum::middleware::from_fn(logger::log_request_response));
 
