@@ -101,6 +101,8 @@ pub struct CalendarRow {
     pub standard_tzoffsetto: Option<String>, // TZOFFSETTO: Offset during standard time
     pub standard_rrule: Option<String>, // RRULE: Recurrence rule (e.g., "FREQ=YEARLY;BYDAY=1SU;BYMONTH=11")
     pub standard_tzname: Option<String>, // TZNAME: Timezone name (e.g., "EST")
+
+    pub etag: Option<String>, // ETag for the calendar
 }
 
 pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
@@ -160,7 +162,8 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
             standard_tzoffsetfrom TEXT,
             standard_tzoffsetto TEXT,
             standard_rrule TEXT,
-            standard_tzname TEXT
+            standard_tzname TEXT,
+            etag TEXT
         )",
     )
     .execute(pool)
@@ -291,9 +294,10 @@ pub async fn add_calendar(pool: &SqlitePool, calendar: &CalendarRow) -> Result<(
             standard_tzoffsetfrom,
             standard_tzoffsetto,
             standard_rrule,
-            standard_tzname
+            standard_tzname,
+            etag
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         ) ON CONFLICT(feed_id) DO UPDATE SET
             version = excluded.version,
             prod_id = excluded.prod_id,
@@ -309,7 +313,8 @@ pub async fn add_calendar(pool: &SqlitePool, calendar: &CalendarRow) -> Result<(
             standard_tzoffsetfrom = excluded.standard_tzoffsetfrom,
             standard_tzoffsetto = excluded.standard_tzoffsetto,
             standard_rrule = excluded.standard_rrule,
-            standard_tzname = excluded.standard_tzname",
+            standard_tzname = excluded.standard_tzname,
+            etag = excluded.etag",
         calendar.feed_id,
         calendar.version,
         calendar.prod_id,
@@ -326,6 +331,7 @@ pub async fn add_calendar(pool: &SqlitePool, calendar: &CalendarRow) -> Result<(
         calendar.standard_tzoffsetto,
         calendar.standard_rrule,
         calendar.standard_tzname,
+        calendar.etag,
     )
     .execute(pool)
     .await?;

@@ -11,7 +11,15 @@ pub async fn sync_ical_events(
     url: &str,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // Fetch the iCal feed
-    let response = reqwest::get(url).await?.text().await?;
+    let response_body = reqwest::get(url).await?;
+
+    let etag = response_body
+        .headers()
+        .get("etag")
+        .and_then(|v| v.to_str().ok())
+        .map(|v| v.to_string());
+
+    let response = response_body.text().await?;
 
     // Parse the iCal feed
     let calendar = ical::IcalParser::new(response.as_bytes())
@@ -99,6 +107,7 @@ pub async fn sync_ical_events(
         standard_tzoffsetto,
         standard_rrule,
         standard_tzname,
+        etag,
     };
 
     db::add_calendar(pool, &cal).await?;
