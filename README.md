@@ -108,14 +108,6 @@ It will redirect you to the feed management page at
 `http://localhost:8080/feed/<feed_id>/<manage_token>`
 This shows the iCal url and options to delete the feed.
 
-In addition to the API and the web interface, you can also use the CLI tool
-
-```bash
-memcal add https://example.com/feed.ics
-memcal download <feed_id> -o feed.ics
-memcal delete <feed_id> # or memcal delete <feed_url>
-```
-
 ## Future
 
 - At some point it might be worth to explore url parameters that allow smart
