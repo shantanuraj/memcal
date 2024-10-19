@@ -16,7 +16,8 @@ You will need `cargo` to build the project.
 ### Create initial database
 
 ```bash
-sqlite3 data/memcal.db
+mkdir -p data
+touch data/memcal.db
 ```
 
 ## Building
