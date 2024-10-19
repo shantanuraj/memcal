@@ -54,9 +54,17 @@ cargo run
 The server will start at `http://localhost:8080`.
 
 To change the port you can use the `PORT` environment variable.
+By default the server will use port 8080.
 
 ```bash
 PORT=3000 cargo run
+```
+
+To change the database path you can use the `DATABASE_URL` environment variable.
+The default database path is `sqlite:data/memcal.db`.
+
+```bash
+DATABASE_URL=sqlite:/var/data/memcal.db cargo run
 ```
 
 ## Architecture
