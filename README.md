@@ -19,6 +19,48 @@ You will need `cargo` to build the project.
 sqlite3 data/memcal.db
 ```
 
+## Building
+
+You can build the project into a binary using `cargo`.
+
+```bash
+cargo build
+```
+
+It will create a debug binary at `target/debug/memcal`.
+
+```bash
+target/debug/memcal
+```
+
+You can also build a release binary.
+
+```bash
+cargo build --release
+```
+
+It will create a release binary at `target/release/memcal`.
+
+```bash
+target/release/memcal
+```
+
+## Running
+
+Run the binary to start the server, or use `cargo run`.
+
+```bash
+cargo run
+```
+
+The server will start at `http://localhost:8080`.
+
+To change the port you can use the `PORT` environment variable.
+
+```bash
+PORT=3000 cargo run
+```
+
 ## Architecture
 
 The primary interaction with `memcal` is through the REST API.
