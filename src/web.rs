@@ -135,11 +135,11 @@ pub async fn feed_page(
                                         h3 { (event.summary) }
                                         p.event-time {
                                             span.label { "Start: " }
-                                            (event.start_time.format("%Y-%m-%d %H:%M"))
+                                            (event.start_time.format("%A, %Y-%m-%d %H:%M"))
                                         }
                                         p.event-time {
                                             span.label { "End: " }
-                                            (event.end_time.format("%Y-%m-%d %H:%M"))
+                                            (event.end_time.format("%A, %Y-%m-%d %H:%M"))
                                         }
                                         @if let Some(description) = &event.description {
                                             @if !description.is_empty() {
