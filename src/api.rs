@@ -296,6 +296,47 @@ pub async fn delete_feed(
     }
 }
 
+#[derive(Deserialize)]
+pub struct DeleteEventRequest {
+    #[serde(rename = "_method")]
+    method: Option<String>,
+}
+
+pub async fn delete_event(
+    method: Method,
+    State(pool): State<SqlitePool>,
+    Path((feed_id, event_id, manage_token)): Path<(i64, i64, String)>,
+    JsonOrForm(payload): JsonOrForm<DeleteEventRequest>,
+) -> Result<impl IntoResponse, StatusCode> {
+    let is_form_request = payload.method.is_some();
+    let method = payload.method.unwrap_or(method.to_string());
+    if method != "DELETE" {
+        return Err(StatusCode::METHOD_NOT_ALLOWED);
+    }
+
+    let feed = db::get_feed(&pool, feed_id)
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?
+        .ok_or(StatusCode::NOT_FOUND)?;
+
+    if feed.manage_token != manage_token {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+
+    db::delete_event_by_id(&pool, feed_id, event_id)
+        .await
+        .map_err(|e| match e {
+            sqlx::Error::RowNotFound => StatusCode::NOT_FOUND,
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        })?;
+
+    if is_form_request {
+        Ok(Redirect::to(&format!("/feed/{}/{}", feed_id, manage_token)).into_response())
+    } else {
+        Ok(StatusCode::NO_CONTENT.into_response())
+    }
+}
+
 pub struct JsonOrForm<T>(T);
 
 #[async_trait]

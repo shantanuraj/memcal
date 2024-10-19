@@ -1,5 +1,5 @@
 use axum::{
-    routing::{get, post},
+    routing::{delete, get, post},
     Router,
 };
 use dotenvy::dotenv;
@@ -35,6 +35,10 @@ async fn main() {
             get(web::feed_page)
                 .delete(api::delete_feed)
                 .post(api::delete_feed),
+        )
+        .route(
+            "/feed/:id/:event_id/:manage_token",
+            delete(api::delete_event).post(api::delete_event),
         )
         .route("/robots.txt", get(web::robots_txt))
         .nest_service("/public", ServeDir::new("public"))

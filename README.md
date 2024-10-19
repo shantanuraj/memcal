@@ -67,6 +67,7 @@ The API is a simple CRUD interface that allows to manage iCal feeds.
 - `POST /feed` - Add a new iCal feed
 - `GET /feed/:id` - Get a memorized iCal feed
 - `DELETE /feed/:id/:manage_token` - Remove a memorized iCal feed
+- `DELETE /feed/:id/:event_id/:manage_token` - Remove a single event from a memorized iCal feed
 
 The syncing is independent of the API. It's a background process that runs
 every 5 minutes. It fetches the iCal feeds and updates the datastore.
@@ -75,6 +76,7 @@ We also expose a web interface that allows to manage the feeds.
 
 - You can add new feeds.
 - Delete existing feeds.
+- Delete events from a feed.
 
 There's no plans for authentication or authorization at the moment.
 
@@ -142,11 +144,35 @@ curl -X POST \
 
 This will respond with a 204 status code if the feed was deleted successfully.
 
+### Deleting an event
+
+To delete an event from a memorized feed you can use the feed url you got when
+adding the feed.
+
+```bash
+curl -X DELETE \
+    -H "content-type: application/json" -d '{}' \
+    http://localhost:8080/feed/<feed_id>/<event_id>/<manage_token>
+
+# or to support web forms that don't support DELETE
+
+curl -X POST \
+    -H "content-type: application/x-www-form-urlencoded" \
+    -d "_method=DELETE" \
+    http://localhost:8080/feed/<feed_id>/<event_id>/<manage_token>
+```
+
+This will respond with a 204 status code if the event was deleted successfully.
+
+### Web interface
+
 The web interface is available at `http://localhost:8080`.
-You can add new feeds here.
+
+The web interface is available at `http://localhost:8080`.
+It allows to add new feeds and manage existing feeds, and events.
 It will redirect you to the feed management page at
 `http://localhost:8080/feed/<feed_id>/<manage_token>`
-This shows the iCal url and options to delete the feed.
+This shows the iCal url and options to delete the feed or individual events.
 
 ## Future
 

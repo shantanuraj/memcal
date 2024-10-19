@@ -401,3 +401,23 @@ pub async fn delete_events_for_feed(pool: &SqlitePool, feed_id: i64) -> Result<(
 
     Ok(())
 }
+
+pub async fn delete_event_by_id(
+    pool: &SqlitePool,
+    feed_id: i64,
+    event_id: i64,
+) -> Result<(), sqlx::Error> {
+    let res = sqlx::query!(
+        "DELETE FROM events WHERE feed_id = ? AND id = ?",
+        feed_id,
+        event_id
+    )
+    .execute(pool)
+    .await?;
+
+    if res.rows_affected() == 0 {
+        return Err(sqlx::Error::RowNotFound);
+    }
+
+    Ok(())
+}
