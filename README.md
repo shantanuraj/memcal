@@ -97,16 +97,16 @@ curl -i -H "content-type: application/x-www-form-urlencoded" \
 
 This will respond with the url of memorized feed.
 
-```json
+```js
 {
   "url": "http://localhost:8080/feed/<feed_id>",
   "manage_token": "<manage_token>",
   "manage_url": "http://localhost:8080/feed/feed_id/<manage_token>"
 }
-# Web forms will redirect to the manage feed page
-# /feed/<feed_id>/<manage_token>
-# HTTP/1.1 303 See Other
-# location: /feed/<feed_id>/<manage_token>
+// Web forms will redirect to the manage feed page
+// /feed/<feed_id>/<manage_token>
+// HTTP/1.1 303 See Other
+// location: /feed/<feed_id>/<manage_token>
 ```
 
 The `feed_id` is a short alphanumeric code that identifies the feed.
