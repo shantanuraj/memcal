@@ -5,9 +5,6 @@ responds with the same data. With one important distinction: it parses the
 source data and stores them in a datastore.
 This is useful for iCal feeds that remove events after they have passed.
 
-> **Note**: Datastore is subject to change. Currently it's a sqlite file.
-> But I'd like to explore options like `rocksdb` or `leveldb`.
-
 ## Pre-requisites
 
 You will need `cargo` to build the project.
