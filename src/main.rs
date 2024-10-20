@@ -23,6 +23,8 @@ async fn main() {
     let db_addr =
         std::env::var("DATABASE_URL").unwrap_or_else(|_| "sqlite:data/memcal.db".to_string());
 
+    ensure_db_exists(&db_addr);
+
     let db_pool = SqlitePool::connect(&db_addr).await.unwrap();
     db::init_db(&db_pool).await.unwrap();
 
@@ -89,4 +91,13 @@ async fn main() {
     )
     .await
     .unwrap();
+}
+
+fn ensure_db_exists(db_addr: &str) {
+    let path = db_addr.split(':').nth(1).unwrap();
+    if !std::path::Path::new(path).exists() {
+        std::fs::create_dir_all(std::path::Path::new(path).parent().unwrap())
+            .expect("Failed to create database directory");
+        std::fs::File::create(path).expect("Failed to intialize database file");
+    }
 }
