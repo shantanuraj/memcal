@@ -245,7 +245,7 @@ pub async fn get_feed(
 
     Ok(Response::builder()
         .header(CONTENT_TYPE, "text/calendar")
-        .header(ETAG, calendar.etag.unwrap())
+        .header(ETAG, calendar.etag.unwrap_or_default())
         .body(ics)
         .unwrap()
         .into_response())
