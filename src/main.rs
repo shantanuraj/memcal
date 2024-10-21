@@ -6,7 +6,7 @@ use dotenvy::dotenv;
 use sqlx::sqlite::SqlitePool;
 use std::net::SocketAddr;
 use tower_http::services::ServeDir;
-use tracing::info;
+use tracing::{error, info};
 
 mod api;
 mod db;
@@ -73,13 +73,13 @@ async fn main() {
                     for feed in feeds {
                         if let Err(e) = ical::sync_ical_events(&sync_pool, feed.id, &feed.url).await
                         {
-                            eprintln!("Error syncing feed {}: {}", feed.id, e);
+                            error!("Error syncing feed [poll] {}: {}", feed.id, e);
                         } else {
                             info!("Synced feed {}", feed.id);
                         }
                     }
                 }
-                Err(e) => eprintln!("Error fetching feeds: {}", e),
+                Err(e) => error!("Error fetching feeds: {}", e),
             }
             tokio::time::sleep(std::time::Duration::from_secs(sync_interval)).await;
         }

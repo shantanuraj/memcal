@@ -3,6 +3,7 @@ use axum::extract::{Path, State};
 use axum::response::IntoResponse;
 use maud::{html, PreEscaped, DOCTYPE};
 use sqlx::SqlitePool;
+use tracing::error;
 
 pub async fn index() -> maud::Markup {
     html! {
@@ -69,7 +70,7 @@ pub async fn feed_page(
 
     if calendar.is_none() {
         if let Err(e) = sync_ical_events(&pool, feed_id, &feed.url).await {
-            eprintln!("Error syncing feed {}: {}", feed_id, e);
+            error!("Error syncing feed [web] {}: {}", feed_id, e);
             return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
         }
         calendar = db::get_calendar(&pool, feed_id)

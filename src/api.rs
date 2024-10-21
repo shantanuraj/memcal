@@ -23,6 +23,7 @@ use ical::{
 use serde::{Deserialize, Serialize};
 use sonyflake::Sonyflake;
 use sqlx::SqlitePool;
+use tracing::error;
 use uuid::Uuid;
 
 use crate::{db, ical::sync_ical_events};
@@ -81,7 +82,7 @@ pub async fn get_feed(
 
     if calendar.is_none() {
         if let Err(e) = sync_ical_events(&pool, feed_id, &feed.url).await {
-            eprintln!("Error syncing feed {}: {}", feed_id, e);
+            error!("Error syncing feed [api] {}: {}", feed_id, e);
             return Err(axum::http::StatusCode::INTERNAL_SERVER_ERROR);
         }
         calendar = db::get_calendar(&pool, feed_id)
