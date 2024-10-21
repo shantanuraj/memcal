@@ -16,6 +16,7 @@ pub struct Event {
     pub feed_id: i64,
     pub summary: String,
     pub description: Option<String>,
+    pub full_day: bool,
     pub start_time: DateTime<Tz>,
     pub start_time_tz: Tz,
     pub end_time: DateTime<Tz>,
@@ -36,6 +37,7 @@ struct EventRow {
     feed_id: i64,
     summary: String,
     description: Option<String>,
+    full_day: bool,
     start_time: String,
     start_time_tz: String,
     end_time: String,
@@ -63,6 +65,7 @@ impl TryFrom<EventRow> for Event {
             feed_id: row.feed_id,
             summary: row.summary,
             description: row.description,
+            full_day: row.full_day,
             start_time: DateTime::parse_from_rfc3339(&row.start_time)?
                 .with_timezone(&start_time_tz),
             start_time_tz,
@@ -124,6 +127,7 @@ pub async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
                     references feeds,
             summary TEXT NOT NULL,
             description TEXT,
+            full_day BOOLEAN,
             start_time TEXT NOT NULL,
             start_time_tz TEXT NOT NULL,
             end_time TEXT NOT NULL,
@@ -227,6 +231,7 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
             feed_id,
             summary,
             description,
+            full_day,
             start_time,
             start_time_tz,
             end_time,
@@ -240,7 +245,7 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
             sequence,
             status
         ) VALUES (
-            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
         ) ON CONFLICT(
             feed_id, start_time, end_time, start_time_tz, end_time_tz
         ) DO UPDATE SET
@@ -257,6 +262,7 @@ pub async fn add_event(pool: &SqlitePool, event: &Event) -> Result<(), sqlx::Err
         event.feed_id,
         event.summary,
         event.description,
+        event.full_day,
         start_time,
         start_time_tz,
         end_time,
@@ -371,6 +377,7 @@ pub async fn get_events_for_feed(
             feed_id,
             summary,
             description,
+            full_day,
             start_time,
             start_time_tz,
             end_time,

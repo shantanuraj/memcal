@@ -1,5 +1,5 @@
 use crate::db::{self, CalendarRow, Event};
-use chrono::{NaiveDateTime, TimeZone};
+use chrono::{NaiveDate, NaiveDateTime, NaiveTime, TimeZone};
 use chrono_tz::Tz;
 use ical::parser::{ical::component::IcalTimeZoneTransitionType, Component};
 use reqwest;
@@ -161,26 +161,57 @@ pub async fn sync_ical_events(
 
         let dtstamp_tz = dtstamp_tz.parse::<Tz>().unwrap_or(Tz::UTC);
 
+        let is_full_day = event
+            .properties
+            .iter()
+            .find(|p| p.name == "DTSTART")
+            .and_then(|p| p.value.as_ref())
+            .map(|v| v.len() == 8)
+            .unwrap_or(false);
+
         let start_time = event
             .properties
             .iter()
             .find(|p| p.name == "DTSTART")
             .and_then(|p| p.value.as_ref())
-            .and_then(|v| NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S").ok())
+            .and_then(|v| {
+                if is_full_day {
+                    NaiveDate::parse_from_str(
+                        v,
+                        "%Y%m%d"
+                    ).map(|d| NaiveDateTime::new(d, NaiveTime::from_hms_milli_opt(0, 0, 0, 0).unwrap()))
+                } else {
+                    NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S")
+                }
+                .ok()
+            })
             .map(|dt| {
                 start_time_tz
                     .from_local_datetime(&dt)
                     .unwrap()
                     .with_timezone(&start_time_tz)
             })
-            .ok_or("Invalid start time")?;
+            .ok_or_else(|| {
+                eprintln!("Failed to parse start time for event: {:?}", event);
+                "Invalid start time"
+            })?;
 
         let end_time = event
             .properties
             .iter()
             .find(|p| p.name == "DTEND")
             .and_then(|p| p.value.as_ref())
-            .and_then(|v| NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S").ok())
+            .and_then(|v| {
+                if is_full_day {
+                    NaiveDate::parse_from_str(
+                        v,
+                        "%Y%m%d"
+                    ).map(|d| NaiveDateTime::new(d, NaiveTime::from_hms_milli_opt(0, 0, 0, 0).unwrap()))
+                } else {
+                    NaiveDateTime::parse_from_str(v, "%Y%m%dT%H%M%S")
+                }
+                .ok()
+            })
             .map(|dt| {
                 end_time_tz
                     .from_local_datetime(&dt)
@@ -201,7 +232,7 @@ pub async fn sync_ical_events(
                     .unwrap()
                     .with_timezone(&dtstamp_tz)
             })
-            .ok_or("Invalid dtstamp")?;
+            .unwrap_or(start_time);
 
         let location = event
             .properties
@@ -249,6 +280,7 @@ pub async fn sync_ical_events(
             feed_id,
             summary,
             description: Some(description),
+            full_day: is_full_day,
             start_time,
             start_time_tz,
             end_time,
